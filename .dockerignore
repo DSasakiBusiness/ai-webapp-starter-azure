@@ -1,0 +1,17 @@
+node_modules
+.next
+dist
+.turbo
+coverage
+test-results
+playwright-report
+.git
+.gitignore
+*.md
+!README.md
+docker-compose*.yml
+.env
+.env.*
+.DS_Store
+.idea
+.vscode

@@ -1,0 +1,23 @@
+# ============================================
+# NestJS API - 開発用 Dockerfile
+# ============================================
+FROM node:20-alpine
+
+WORKDIR /app
+
+# 依存関係のインストール
+COPY package.json package-lock.json* turbo.json ./
+COPY apps/api/package.json ./apps/api/
+COPY packages/shared/package.json ./packages/shared/
+
+RUN npm install
+
+# Prisma スキーマのコピーと生成
+COPY apps/api/prisma ./apps/api/prisma
+RUN cd apps/api && npx prisma generate
+
+# ソースコードのコピー
+COPY apps/api ./apps/api
+COPY packages/shared ./packages/shared
+
+EXPOSE 3001

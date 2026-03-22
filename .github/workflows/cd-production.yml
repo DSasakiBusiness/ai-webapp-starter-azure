@@ -1,0 +1,93 @@
+name: CD - Production
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+env:
+  AZURE_RESOURCE_GROUP: rg-ai-webapp-production
+  AZURE_LOCATION: japaneast
+  ACR_NAME: aiwebappprod
+  API_IMAGE: ai-webapp-api
+  WEB_IMAGE: ai-webapp-web
+
+jobs:
+  build-and-push:
+    name: Build & Push Container Images
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Azure Login
+        uses: azure/login@v2
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Login to ACR
+        run: az acr login --name ${{ env.ACR_NAME }}
+
+      - name: Extract version from tag
+        id: version
+        run: echo "VERSION=${GITHUB_REF_NAME#v}" >> $GITHUB_OUTPUT
+
+      - name: Build & Push API Image
+        run: |
+          docker build -f apps/api/Dockerfile \
+            -t ${{ env.ACR_NAME }}.azurecr.io/${{ env.API_IMAGE }}:${{ steps.version.outputs.VERSION }} \
+            -t ${{ env.ACR_NAME }}.azurecr.io/${{ env.API_IMAGE }}:latest \
+            .
+          docker push ${{ env.ACR_NAME }}.azurecr.io/${{ env.API_IMAGE }}:${{ steps.version.outputs.VERSION }}
+          docker push ${{ env.ACR_NAME }}.azurecr.io/${{ env.API_IMAGE }}:latest
+
+      - name: Build & Push Web Image
+        run: |
+          docker build -f apps/web/Dockerfile \
+            -t ${{ env.ACR_NAME }}.azurecr.io/${{ env.WEB_IMAGE }}:${{ steps.version.outputs.VERSION }} \
+            -t ${{ env.ACR_NAME }}.azurecr.io/${{ env.WEB_IMAGE }}:latest \
+            .
+          docker push ${{ env.ACR_NAME }}.azurecr.io/${{ env.WEB_IMAGE }}:${{ steps.version.outputs.VERSION }}
+          docker push ${{ env.ACR_NAME }}.azurecr.io/${{ env.WEB_IMAGE }}:latest
+
+  deploy:
+    name: Deploy to Production
+    runs-on: ubuntu-latest
+    needs: build-and-push
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Azure Login
+        uses: azure/login@v2
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Extract version from tag
+        id: version
+        run: echo "VERSION=${GITHUB_REF_NAME#v}" >> $GITHUB_OUTPUT
+
+      - name: Deploy API to Azure Container Apps
+        run: |
+          az containerapp update \
+            --name ai-webapp-api \
+            --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
+            --image ${{ env.ACR_NAME }}.azurecr.io/${{ env.API_IMAGE }}:${{ steps.version.outputs.VERSION }}
+
+      - name: Deploy Web to Azure Container Apps
+        run: |
+          az containerapp update \
+            --name ai-webapp-web \
+            --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
+            --image ${{ env.ACR_NAME }}.azurecr.io/${{ env.WEB_IMAGE }}:${{ steps.version.outputs.VERSION }}
+
+      - name: Run DB Migration
+        run: |
+          az containerapp exec \
+            --name ai-webapp-api \
+            --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
+            --command "npx prisma migrate deploy"
+
+      - name: Verify deployment
+        run: |
+          echo "Production deployment completed: v${{ steps.version.outputs.VERSION }}"
+          echo "Verify at: https://your-production-url.azurecontainerapps.io"
