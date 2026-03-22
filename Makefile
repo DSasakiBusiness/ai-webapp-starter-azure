@@ -6,7 +6,8 @@
 .PHONY: help setup dev stop restart rebuild logs clean \
         db-migrate db-seed db-studio db-reset db-generate \
         test test-unit test-integration test-e2e test-docker \
-        lint format format-check build \
+        lint format format-check spell knip circular \
+        deps-check deps-update sort-pkg quality build \
         docker-shell-api docker-shell-web docker-shell-db
 
 # デフォルト
@@ -144,7 +145,28 @@ format: ## コードフォーマット
 	npm run format
 
 format-check: ## フォーマットチェック (CI 用、変更なし)
-	npx prettier --check "**/*.{ts,tsx,js,jsx,json,md}"
+	npm run format:check
+
+spell: ## スペルチェック (cspell)
+	npm run spell
+
+knip: ## 未使用コード・export・依存の検出
+	npm run knip
+
+circular: ## 循環依存の検出 (madge)
+	npm run circular
+
+deps-check: ## 未使用 dependencies の検出 (depcheck)
+	npm run deps:check
+
+deps-update: ## 依存パッケージ更新チェック (ncu)
+	npm run deps:update
+
+sort-pkg: ## package.json のキーをソート
+	npm run sort-pkg
+
+quality: ## 全品質チェックを一括実行 (lint + format + spell + knip + circular)
+	npm run quality
 
 build: ## プロダクションビルド
 	npm run build
@@ -160,3 +182,4 @@ docker-shell-web: ## Web コンテナにシェル接続
 
 docker-shell-db: ## DB コンテナに psql 接続
 	docker compose exec db psql -U $${POSTGRES_USER:-postgres} -d $${POSTGRES_DB:-ai_webapp_dev}
+
