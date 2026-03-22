@@ -1,38 +1,37 @@
-import { Controller, Post, Body, Get } from '@nestjs/common';
-import { AiService, ChatMessage } from './ai.service';
-import { IsArray, IsString, IsIn, ValidateNested } from 'class-validator';
-import { Type } from 'class-transformer';
+import { Controller, Post, Body, Get, HttpCode, HttpStatus } from '@nestjs/common';
+import { AiService } from './ai.service';
+import { ChatRequestDto } from './dto/chat.dto';
 
-class ChatMessageDto {
-  @IsIn(['user', 'assistant', 'system'])
-  role: 'user' | 'assistant' | 'system';
-
-  @IsString()
-  content: string;
-}
-
-class ChatRequestDto {
-  @IsArray()
-  @ValidateNested({ each: true })
-  @Type(() => ChatMessageDto)
-  messages: ChatMessageDto[];
-}
-
+/**
+ * AI コントローラー
+ * LLM 関連のエンドポイントを提供する。
+ */
 @Controller('ai')
 export class AiController {
   constructor(private readonly aiService: AiService) {}
 
+  /**
+   * AI サービスのステータスを返す
+   */
   @Get('status')
   getStatus() {
     return {
-      status: 'ready',
-      timestamp: new Date().toISOString(),
+      success: true,
+      data: {
+        status: 'ready',
+        timestamp: new Date().toISOString(),
+      },
     };
   }
 
+  /**
+   * チャット補完を実行する
+   * リトライ付きで LLM API を呼び出し、統一フォーマットで返却する。
+   */
   @Post('chat')
+  @HttpCode(HttpStatus.OK)
   async chat(@Body() dto: ChatRequestDto) {
-    const result = await this.aiService.chat(dto.messages as ChatMessage[]);
+    const result = await this.aiService.chat(dto.messages);
     return {
       success: true,
       data: result,

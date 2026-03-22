@@ -1,9 +1,12 @@
 import { NestFactory } from '@nestjs/core';
-import { ValidationPipe } from '@nestjs/common';
+import { ValidationPipe, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { AppModule } from './app.module';
+import { HttpExceptionFilter } from './common/filters/http-exception.filter';
+import { LoggingInterceptor } from './common/interceptors/logging.interceptor';
 
 async function bootstrap() {
+  const logger = new Logger('Bootstrap');
   const app = await NestFactory.create(AppModule);
 
   const configService = app.get(ConfigService);
@@ -16,6 +19,12 @@ async function bootstrap() {
       transform: true,
     }),
   );
+
+  // グローバル例外フィルタ
+  app.useGlobalFilters(new HttpExceptionFilter());
+
+  // グローバルロギングインターセプタ
+  app.useGlobalInterceptors(new LoggingInterceptor());
 
   // CORS 設定
   app.enableCors({
@@ -32,7 +41,8 @@ async function bootstrap() {
 
   await app.listen(port, host);
 
-  console.log(`🚀 API server running on http://${host}:${port}`);
+  logger.log(`🚀 API server running on http://${host}:${port}`);
 }
 
 bootstrap();
+

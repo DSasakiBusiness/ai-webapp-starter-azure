@@ -3,7 +3,7 @@ import './globals.css';
 
 export const metadata: Metadata = {
   title: 'AI Web App Starter',
-  description: 'AI 特化 Web サービス開発スターター',
+  description: 'AI 特化 Web サービス開発スターター - Next.js + NestJS + Prisma + LLM',
 };
 
 export default function RootLayout({

@@ -4,7 +4,7 @@ services:
     container_name: ai-webapp-db
     restart: unless-stopped
     ports:
-      - "5432:5432"
+      - "${DB_PORT:-5432}:5432"
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-postgres}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
@@ -16,6 +16,23 @@ services:
       interval: 5s
       timeout: 5s
       retries: 5
+
+  db-test:
+    image: postgres:16-alpine
+    container_name: ai-webapp-db-test
+    ports:
+      - "${DB_TEST_PORT:-5433}:5432"
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: ai_webapp_test
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    profiles:
+      - test
 
   api:
     build:

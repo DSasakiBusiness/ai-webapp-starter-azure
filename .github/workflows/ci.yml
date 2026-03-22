@@ -11,7 +11,7 @@ env:
 
 jobs:
   lint:
-    name: Lint
+    name: Lint & Format Check
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -20,6 +20,7 @@ jobs:
           node-version: ${{ env.NODE_VERSION }}
           cache: "npm"
       - run: npm ci
+      - run: npx prettier --check "**/*.{ts,tsx,js,jsx,json,md}"
       - run: npm run lint
 
   test-unit:
@@ -33,7 +34,13 @@ jobs:
           cache: "npm"
       - run: npm ci
       - run: cd apps/api && npx prisma generate
-      - run: npm run test:unit
+      - run: npm run test:unit -- --coverage
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: coverage-report
+          path: apps/*/coverage/
+          retention-days: 7
 
   test-integration:
     name: Integration Tests
@@ -104,8 +111,7 @@ jobs:
       - name: Start Web server
         run: npm run start -w apps/web &
       - name: Wait for servers
-        run: |
-          npx wait-on http://localhost:3000 http://localhost:3001/health --timeout 60000
+        run: npx wait-on http://localhost:3000 http://localhost:3001/api/health --timeout 60000
       - run: npm run test:e2e
       - uses: actions/upload-artifact@v4
         if: failure()
