@@ -446,4 +446,4 @@ npx nest generate service modules/feature-name
 
 ## 📄 ライセンス
 
-Private
+[MIT License](LICENSE)
